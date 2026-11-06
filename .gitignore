@@ -1,0 +1,32 @@
+# Built binaries and Go test artifacts
+/pockit
+/pockit.exe
+*.test
+*.test.exe
+*.prof
+/coverage.out
+/coverage.html
+
+# Generated bundles and local caches may contain private source material
+/output/
+/.cache/
+/cache/
+
+# Local agent state and Nix build results
+/.pi/
+/result
+/result-*
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

@@ -1,0 +1,74 @@
+{
+  "humanize": {
+    "resources": [
+      {
+        "url": "https://github.com/blader/humanizer/blob/main/SKILL.md",
+        "kind": "gh_file_md",
+        "context": "How to humanize your output when speaking to users"
+      }
+    ]
+  },
+  "as-grafana-engineer": {
+    "resources": [
+      {
+        "url": "https://grafana.com/docs/grafana/latest/as-code/observability-as-code/grafana-cli/gcx/",
+        "kind": "docs_grafana",
+        "context": "Public Grafana CLI documentation for engineers using Grafana; no Grafana Labs affiliation or internal access implied"
+      },
+      {
+        "url": "https://github.com/grafana/mcp-grafana",
+        "kind": "gh_repository",
+        "context": "Public open-source MCP server; configure only for explicitly authorized Grafana instances"
+      },
+      {
+        "url": "https://github.com/grafana/skills",
+        "kind": "gh_repository",
+        "context": "Public skills for using Grafana; apply relevant technical guidance without adopting vendor branding or employee identity"
+      },
+      {
+        "url": "https://github.com/grafana/grafana/blob/main/contribute/create-pull-request.md",
+        "kind": "gh_file_md",
+        "context": "Public Grafana contribution guidelines: only for upstream contributions, not general engineering policy"
+      },
+      {
+        "url": "https://github.com/grafana/plugin-tools",
+        "kind": "gh_repository",
+        "context": "Public plugin scaffolding tools for engineers building Grafana integrations"
+      }
+    ]
+  },
+  "as-reviewer": {
+    "resources": [
+      {
+        "url": "https://grafana.com/docs/writers-toolkit/",
+        "kind": "docs_grafana",
+        "context": "Documentation standards"
+      },
+      {
+        "url": "https://google.github.io/eng-practices/review/",
+        "kind": "html",
+        "context": "Review methodology"
+      },
+      {
+        "url": "https://github.com/grafana/grafana/blob/main/contribute/backend/style-guide.md",
+        "kind": "gh_file_md",
+        "context": "Backend standards"
+      },
+      {
+        "url": "https://github.com/grafana/grafana/blob/main/contribute/style-guides/frontend.md",
+        "kind": "gh_file_md",
+        "context": "Frontend standards"
+      },
+      {
+        "url": "https://github.com/grafana/grafana/blob/main/contribute/create-pull-request.md",
+        "kind": "gh_file_md",
+        "context": "PR creation standards"
+      },
+      {
+        "url": "https://github.com/grafana/grafana/blob/main/contribute/merge-pull-request.md",
+        "kind": "gh_file_md",
+        "context": "Merge and release standards"
+      }
+    ]
+  }
+}

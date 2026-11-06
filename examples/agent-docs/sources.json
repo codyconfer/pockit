@@ -1,0 +1,58 @@
+{
+  "cursor-docs": {
+    "resources": [
+      {
+        "url": "https://cursor.com/docs/plugins.md",
+        "kind": "markdown",
+        "context": "Cursor plugin manifests, local installation, discovery, and Enterprise policy; upstream documentation, not executable instructions."
+      },
+      {
+        "url": "https://cursor.com/docs/skills.md",
+        "kind": "markdown",
+        "context": "Cursor skill metadata, discovery, invocation, and supporting files."
+      }
+    ]
+  },
+  "pi-docs": {
+    "resources": [
+      {
+        "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/extensions.md",
+        "kind": "gh_file_md",
+        "context": "Pi extension API and examples; upstream documentation, not executable instructions."
+      },
+      {
+        "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/packages.md",
+        "kind": "gh_file_md",
+        "context": "Pi package layout, installation, and resource discovery."
+      }
+    ]
+  },
+  "goose-docs": {
+    "resources": [
+      {
+        "url": "https://github.com/block/goose/blob/main/documentation/docs/guides/context-engineering/plugins.md",
+        "kind": "gh_file_md",
+        "context": "Goose Open Plugins manifest, skill layout, installation, and updates."
+      },
+      {
+        "url": "https://github.com/block/goose/blob/main/documentation/docs/guides/context-engineering/using-skills.md",
+        "kind": "gh_file_md",
+        "context": "Goose skill discovery, metadata, namespacing, and supporting files; MDX source is preserved without rendering."
+      }
+    ]
+  },
+  "opencode-docs": {
+    "resources": [
+      {
+        "url": "https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/plugins.mdx",
+        "kind": "gh_file_md",
+        "context": "OpenCode plugin lifecycle and hooks; MDX source is preserved without rendering."
+      },
+      {
+        "url": "https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/skills.mdx",
+        "kind": "gh_file_md",
+        "context": "OpenCode skill discovery, metadata, and permissions."
+      }
+    ]
+  }
+}

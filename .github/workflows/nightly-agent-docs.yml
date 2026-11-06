@@ -1,0 +1,118 @@
+name: Nightly agent documentation
+
+on:
+  schedule:
+    # UTC; deliberately off the top of the hour.
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-agent-docs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    name: Refresh and bundle Pi/OpenCode/Goose/Cursor docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      SOURCES: examples/agent-docs/sources.json
+      ROLES: examples/agent-docs/roles.json
+      SCHEMA: data/sources.schema.json
+
+    steps:
+      - name: Check out PocKit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Prepare private build directories
+        run: |
+          umask 077
+          root="$(mktemp -d "$RUNNER_TEMP/pockit-agent-docs.XXXXXXXX")"
+          mkdir -p "$root/cache" "$root/reports" "$root/bundles/recipe"
+          echo "BUILD_ROOT=$root" >> "$GITHUB_ENV"
+
+      - name: Build PocKit
+        run: go build -trimpath -o "$BUILD_ROOT/pockit" ./cmd/pockit
+
+      - name: Validate and plan the documentation catalog
+        run: |
+          "$BUILD_ROOT/pockit" sources validate \
+            --sources "$SOURCES" --roles "$ROLES" --schema "$SCHEMA" \
+            --cache "$BUILD_ROOT/cache" --json \
+            > "$BUILD_ROOT/reports/validate.json"
+          "$BUILD_ROOT/pockit" sources plan \
+            --sources "$SOURCES" --roles "$ROLES" --schema "$SCHEMA" \
+            --cache "$BUILD_ROOT/cache" --json > "$BUILD_ROOT/reports/plan.json"
+
+      - name: Fetch fresh upstream documentation
+        env:
+          # Public upstream repos only; token is scoped to this step.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          "$BUILD_ROOT/pockit" sources fetch --refresh \
+            --sources "$SOURCES" --roles "$ROLES" --schema "$SCHEMA" \
+            --cache "$BUILD_ROOT/cache" --json \
+            > "$BUILD_ROOT/reports/fetch.json"
+
+      # Any fetch failure (including partial success) stops generation/upload.
+      # All formats use the same fresh cache; generation itself is offline.
+      - name: Generate and verify all host bundles
+        run: |
+          for host in pi opencode goose cursor; do
+            case "$host" in
+              pi) flag=--pi-extension ;;
+              opencode) flag=--opencode-plugin ;;
+              goose) flag=--goose-plugin ;;
+              cursor) flag=--cursor-plugin ;;
+            esac
+            "$BUILD_ROOT/pockit" skills generate "$flag" \
+              --sources "$SOURCES" --roles "$ROLES" --schema "$SCHEMA" \
+              --cache "$BUILD_ROOT/cache" --out "$BUILD_ROOT/bundles/$host" \
+              --json > "$BUILD_ROOT/reports/generate-$host.json"
+            "$BUILD_ROOT/pockit" skills generate "$flag" --check \
+              --sources "$SOURCES" --roles "$ROLES" --schema "$SCHEMA" \
+              --cache "$BUILD_ROOT/cache" --out "$BUILD_ROOT/bundles/$host" \
+              --json > "$BUILD_ROOT/reports/check-$host.json"
+          done
+
+      - name: Archive documentation bundles
+        run: |
+          cp "$SOURCES" "$BUILD_ROOT/bundles/recipe/sources.json"
+          cp "$ROLES" "$BUILD_ROOT/bundles/recipe/roles.json"
+          cp "$SCHEMA" "$BUILD_ROOT/bundles/recipe/sources.schema.json"
+          git rev-parse HEAD > "$BUILD_ROOT/bundles/recipe/pockit-commit.txt"
+          # Tar preserves private permissions and hidden bundle-state files.
+          tar -czf "$BUILD_ROOT/agent-docs.tar.gz" -C "$BUILD_ROOT/bundles" .
+
+      - name: Upload documentation bundles
+        # actions/upload-artifact v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: docs-bundles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.BUILD_ROOT }}/agent-docs.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload diagnostic reports
+        if: ${{ always() && env.BUILD_ROOT != '' }}
+        # actions/upload-artifact v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: docs-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.BUILD_ROOT }}/reports/
+          if-no-files-found: warn
+          retention-days: 14

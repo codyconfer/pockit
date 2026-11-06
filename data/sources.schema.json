@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Role-scoped source catalog",
+  "description": "A catalog of source pointers grouped by agent role, not fetched content or authorization to execute operations. Legacy collector input formats are outside this schema.",
+  "type": "object",
+  "minProperties": 1,
+  "propertyNames": {
+    "type": "string",
+    "pattern": "^[^;\\s]+$"
+  },
+  "additionalProperties": { "$ref": "#/$defs/role" },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "required": ["resources"],
+      "additionalProperties": false,
+      "properties": {
+        "resources": {
+          "type": "array",
+          "description": "Sources relevant to this role. URLs may recur across roles. URL-only uniqueness within a role must be checked separately.",
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": ["url", "kind", "context"],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "An absolute HTTP(S) address, or an empty string for a missing source. An MCP endpoint is a service pointer, not document content.",
+          "anyOf": [
+            { "const": "" },
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://[^/\\s?#]+(?:[/?#][^\\s]*)?$"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Application-specific source category (for example gh_file_md, slack, or mcp_grafana), not a MIME type. New kinds do not imply fetching support."
+        },
+        "context": {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Role-specific relevance, authority, caveats, and operational boundaries. Used as the collector output title."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["current", "historical", "deprecated", "unknown"],
+          "description": "Lifecycle status of the reference, not proof that its contents are correct or reachable. Omission means unknown."
+        },
+        "access": {
+          "type": "string",
+          "enum": ["public", "authenticated", "unknown"],
+          "description": "Expected access requirements, not a credential or permission grant. Omission means unknown."
+        },
+        "lastVerified": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "YYYY-MM-DD of the last check described in verificationNote; null or omission means no recorded check. Does not imply a full content review."
+        },
+        "verificationNote": {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Scope and evidence of verification, such as path existence versus authenticated content review. Never include credentials."
+        }
+      }
+    }
+  }
+}
