@@ -8,7 +8,8 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/term"
+	"github.com/codyconfer/viewkit/panels"
+	"github.com/codyconfer/viewkit/theme"
 )
 
 type Progress struct {
@@ -16,15 +17,18 @@ type Progress struct {
 	title       string
 	terminal    bool
 	color       bool
+	panels      bool
+	rows        int
+	success     bool
 	done, total int
 	err         error
 }
 
 func NewProgress(out io.Writer, title string, plain ...bool) *Progress {
-	file, ok := out.(*os.File)
 	noStyle := len(plain) > 0 && plain[0]
-	p := &Progress{out: out, title: Safe(title), total: 1, terminal: ok && term.IsTerminal(file.Fd()) && os.Getenv("TERM") != "dumb"}
+	p := &Progress{out: out, title: Safe(title), total: 1, terminal: !noStyle && isTerminal(out)}
 	p.color = ColorEnabled(out, noStyle)
+	p.panels = PanelsEnabled(out, noStyle)
 	if p.terminal {
 		p.draw(false)
 	}
@@ -39,6 +43,7 @@ func (p *Progress) Update(done, total int) {
 }
 
 func (p *Progress) Finish(success bool) error {
+	p.success = success
 	if success {
 		p.done, p.total = 1, 1
 	}
@@ -57,21 +62,51 @@ func (p *Progress) draw(final bool) {
 	if percent > 100 {
 		percent = 100
 	}
+	if p.panels {
+		p.drawPanel(percent, final)
+		return
+	}
 	prefix, suffix := "", ""
 	if p.terminal {
-		prefix = "\r"
+		prefix = "\r\x1b[K"
 	}
 	if final {
 		suffix = "\n"
 	}
 	line := fmt.Sprintf("%s [%s%s] %3d%%", p.title, strings.Repeat("=", percent/5), strings.Repeat(" ", 20-percent/5), percent)
-	if p.color {
-		bar := "\x1b[36m" + strings.Repeat("━", percent/5) + "\x1b[90m" + strings.Repeat("─", 20-percent/5) + "\x1b[0m"
-		line = fmt.Sprintf(" \x1b[1;36mPOCKIT\x1b[0m  \x1b[2m%s\x1b[0m  %s  \x1b[1m%3d%%\x1b[0m", p.title, bar, percent)
+	if p.terminal {
+		line = ansi.Truncate(line, max(terminalWidth(p.out)-1, 1), "")
 	}
 	if p.err == nil {
 		_, p.err = fmt.Fprintf(p.out, "%s%s%s", prefix, line, suffix)
 	}
+}
+
+// drawPanel only rewrites rows owned by this progress indicator. It never
+// switches screens, hides the cursor, or consumes terminal input.
+func (p *Progress) drawPanel(percent int, final bool) {
+	if p.err != nil {
+		return
+	}
+	width := terminalWidth(p.out)
+	status := "Working"
+	if final {
+		status = "Incomplete"
+		if p.success {
+			status = "Complete"
+		}
+	}
+	bar := panels.Meter(theme.Default(), float64(percent)/100, max(width-13, 1))
+	// Strip the meter's style before passing it through the same sanitization
+	// as all other panel content. The frame supplies the scoped theme.
+	body := []string{fmt.Sprintf("%s · %d%%", status, percent), ansi.Strip(bar)}
+	block := renderPanel("POCKIT · "+p.title, body, width, p.color)
+	prefix := ""
+	if p.rows > 0 {
+		prefix = fmt.Sprintf("\x1b[%dA\r\x1b[J", p.rows)
+	}
+	_, p.err = fmt.Fprint(p.out, prefix+block+"\n")
+	p.rows = strings.Count(block, "\n") + 1
 }
 
 func Safe(s string) string {
@@ -84,6 +119,5 @@ func Safe(s string) string {
 }
 
 func ColorEnabled(out io.Writer, plain bool) bool {
-	file, ok := out.(*os.File)
-	return !plain && ok && term.IsTerminal(file.Fd()) && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb"
+	return !plain && isTerminal(out) && os.Getenv("NO_COLOR") == ""
 }

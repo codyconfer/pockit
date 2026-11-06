@@ -235,9 +235,11 @@ open live connections.
 
 | Signal | Meaning |
 | --- | --- |
-| Default progress reaches 100% | Processing finished; some sources may still have failed |
-| `--json` | Full reports for inspection and automation |
-| `--plain` or `NO_COLOR` | No styling; redirected output stays clean |
+| Default terminal output | Inline ViewKit panels for progress, results, warnings, and installation instructions; no full-screen UI |
+| Progress reaches 100% | Processing finished; some sources may still have failed |
+| `--json` | Full reports for inspection and automation, without panels |
+| `--plain`, `TERM=dumb`, or redirection | Plain text with a final progress bar; no panels or cursor controls |
+| `NO_COLOR` | Keep terminal panels but omit color |
 | Exit 0 / 2 / 3 / 4 | Success / invalid input / unsafe or refused output / partial result or operational failure |
 
 A partial run may still leave useful cache entries or artifacts. Check its

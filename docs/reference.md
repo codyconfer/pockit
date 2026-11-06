@@ -59,7 +59,7 @@ Flags follow the command. Omit `--role` to select all roles.
 | `--catalog FILE` / `--sources FILE` | Catalog override (aliases) |
 | `--inheritance FILE` / `--roles FILE` | Role graph override (aliases) |
 | `--schema FILE`, `--role NAME`, `--cache DIR` | Schema, selected role, private cache |
-| `--json`, `--plain` | Full JSON report / unstyled output |
+| `--json`, `--plain` | Full JSON report / plain text without panels or cursor controls |
 | `--refresh` | Fetch: recollect successful cached URLs |
 | `--concurrency N` | Fetch: 1 to 8 workers, default 8 |
 | `--timeout DURATION` | Fetch: positive per-request timeout, default `30s` |
@@ -656,12 +656,19 @@ regenerate. PocKit does not edit installed bundles or remove obsolete files.
 
 | Mode | Output |
 | --- | --- |
-| Default | Single progress bar; failed entries as `warning:` on stderr; no successful-entry list |
+| Default terminal | Inline ViewKit panels for live progress, result counts, configuration paths, warnings, and host installation instructions; no successful-entry list |
 | Fetch / generation | Progress by finished sources / written artifacts (preflight for dry runs), not byte counts |
 | 100% | Processing finished; individual sources may have failed, so inspect warnings and the exit code |
-| `--json` | Complete plans, outcomes, paths, counts; stdout free of progress |
-| `--plain`, `NO_COLOR`, `TERM=dumb`, redirection | No color; redirected/dumb output receives only final bar |
+| `--json` | Complete plans, outcomes, paths, counts; stdout free of progress and panels; diagnostics remain plain text on stderr |
+| `--plain`, `TERM=dumb`, redirection | Plain text without panels or cursor controls; progress appears only as a final bar |
+| `NO_COLOR` | Terminal panels without color; live progress still redraws in place |
+| Narrow terminals | Panels fit the terminal width, capped at 100 columns; below 12 columns, use text output |
 | Terminal safety | Strip source control sequences from warnings; no alternate screen, raw mode, or font probing |
+
+Progress panels redraw only their own lines. They stay in the terminal's normal
+scrollback when the command finishes. Progress panels distinguish complete and
+incomplete runs; 100% measures processing, not source availability. Help and
+`config schema` output remain plain text and raw JSON, respectively.
 
 Run `pockit` for help. Fetch commands authorize collection; generation commands
 write offline output. Pass `--overwrite` to allow replacement or `--dry-run` to

@@ -31,7 +31,7 @@ Usage (flags follow the command):
   pockit input --sources FILE --roles FILE [--out DIR] [--pi-extension | --opencode-plugin | --goose-plugin | --cursor-plugin | --claude-code-plugin | --codex-plugin | --agent-md] [--json]
   pockit sources validate|plan|fetch [--role ROLE] [--json]
   pockit skills generate [--out DIR] [--role ROLE] [--dry-run] [--check] [--overwrite] [--pi-extension | --opencode-plugin | --goose-plugin | --cursor-plugin | --claude-code-plugin | --codex-plugin | --agent-md] [--package-name NAME] [--package-version SEMVER] [--install] [--json]
-Output: progress bar and warnings by default; --json for automation; --plain for no color
+Output: inline ViewKit panels on terminals; --json for automation; --plain for plain text
 Inputs: --catalog FILE (--sources FILE) --schema FILE --inheritance FILE (--roles FILE) --cache DIR
 Defaults: user config pockit/sources.json and roles.json, then embedded inputs.
 Fetch: --concurrency 8 --timeout 30s --max-bytes 8388608 --refresh
@@ -69,7 +69,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 	}
 	var progress *uiadapter.Progress
 	warn := func(message string) {
-		uiadapter.Warning(errOut, message, plain)
+		uiadapter.Warning(errOut, message, plain || machine)
 	}
 	finish := func(success bool) error {
 		if progress == nil {
@@ -84,7 +84,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 		if machine {
 			e = json.NewEncoder(out).Encode(v)
 		} else {
-			e = finish(true)
+			complete := true
+			switch report := v.(type) {
+			case fetching.Report:
+				complete = report.Failed == 0 && ctx.Err() == nil
+			case skills.Report:
+				complete = report.Failed == 0 && !report.NeedsRebuild
+			}
+			e = finish(complete)
+			if e == nil && uiadapter.PanelsEnabled(out, plain) {
+				e = uiadapter.WritePanel(out, "POCKIT · Results", reportSummary(v), plain)
+			}
 			switch report := v.(type) {
 			case fetching.Report:
 				for _, outcome := range report.Outcomes {
@@ -94,10 +104,12 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 				}
 			case skills.Report:
 				if check {
+					message := "Bundle is up to date with current cached inputs."
 					if report.NeedsRebuild {
-						fmt.Fprintln(out, "Rebuild needed: bundled output differs from current cached inputs.")
-					} else {
-						fmt.Fprintln(out, "Bundle is up to date with current cached inputs.")
+						message = "Rebuild needed: bundled output differs from current cached inputs."
+					}
+					if e == nil {
+						e = uiadapter.WritePanel(out, "POCKIT · Bundle check", []string{message}, plain)
 					}
 				}
 				for _, result := range report.Results {
@@ -143,7 +155,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 	f.StringVar(&role, "role", "", "selected role; omission selects all")
 	f.StringVar(&cacheDir, "cache", "", "private cache outside project")
 	f.BoolVar(&machine, "json", machine, "stable machine-readable JSON instead of styled output")
-	f.BoolVar(&plain, "plain", false, "readable output without color")
+	f.BoolVar(&plain, "plain", false, "plain text without panels or terminal control sequences")
 	if group == "skills" {
 		f.StringVar(&output, "out", "", "output directory (default: user data/pockit/{pi-package,opencode-plugin,goose-plugin,cursor-plugin,claude-code-plugin,codex-plugin} for package output, otherwise private temp; required for --check)")
 		f.BoolVar(&piExtension, "pi-extension", false, "include a Pi extension package and installation instructions")
@@ -256,7 +268,9 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 		if err != nil {
 			return fail(fmt.Errorf("resolve output directory: %w", err), Partial)
 		}
-		fmt.Fprintln(errOut, uiadapter.Safe("Output directory: "+output))
+		if err := uiadapter.WritePanel(errOut, "POCKIT · Output", []string{"Output directory: " + output}, plain || machine); err != nil {
+			return fail(err, Partial)
+		}
 	}
 	if !machine {
 		progress = uiadapter.NewProgress(out, group+" / "+command, plain)
@@ -319,29 +333,30 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) int {
 			return Partial
 		}
 		if r.Installation != nil && packageOutput != nil {
-			printInstructions := func() {
-				for _, line := range packageOutput.instructions(r.Installation) {
-					fmt.Fprintln(errOut, uiadapter.Safe(line))
-				}
+			printInstructions := func() error {
+				return uiadapter.WritePanel(errOut, "POCKIT · "+packageOutput.Host(), packageOutput.instructions(r.Installation), plain || machine)
 			}
 			if install {
 				message, err := packageOutput.install(ctx, output, packageName, overwrite, r.Installation, errOut)
 				if err != nil {
 					warn(packageOutput.Host() + " installation failed (generated files remain available): " + err.Error())
 					if packageOutput.instructionsOnFailure {
-						printInstructions()
+						_ = printInstructions()
 					}
 					if errors.Is(err, skills.ErrRefused) {
 						return Refused
 					}
 					return Partial
 				}
-				fmt.Fprintln(errOut, uiadapter.Safe(message))
+				lines := []string{message}
 				if packageOutput.noteAfterInstall {
-					fmt.Fprintln(errOut, uiadapter.Safe(r.Installation.Note))
+					lines = append(lines, r.Installation.Note)
 				}
-			} else {
-				printInstructions()
+				if err := uiadapter.WritePanel(errOut, "POCKIT · "+packageOutput.Host(), lines, plain || machine); err != nil {
+					return fail(err, Partial)
+				}
+			} else if err := printInstructions(); err != nil {
+				return fail(err, Partial)
 			}
 		}
 		if r.NeedsRebuild {

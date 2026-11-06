@@ -54,13 +54,17 @@ func TestGenerateDirectoryNoticeBeforeTerminalProgress(t *testing.T) {
 			if code != Partial {
 				t.Fatalf("exit=%d: %s", code, output.String())
 			}
-			if !strings.HasPrefix(output.String(), "Output directory: ") {
-				t.Fatalf("directory notice interrupts progress: %q", output.String())
+			text := output.String()
+			notice := strings.Index(text, "Output directory: ")
+			progress := strings.Index(text, "POCKIT · skills / generate")
+			if notice < 0 || progress < notice {
+				t.Fatalf("directory notice interrupts progress: %q", text)
 			}
-			for _, line := range strings.Split(output.String(), "\n") {
-				if strings.Contains(line, "skills / generate") && !strings.Contains(line, "100%") {
-					t.Fatalf("unfinished progress line: %q", line)
-				}
+			if !strings.HasPrefix(text, "╭") || !strings.Contains(text, "Incomplete · 100%") || !strings.Contains(text, "POCKIT · Results") {
+				t.Fatalf("missing inline panels: %q", text)
+			}
+			if strings.Contains(text, "\x1b[?1049") || strings.Contains(text, "\x1b[?25") {
+				t.Fatal("inline rendering changed screen or cursor visibility")
 			}
 		})
 	}

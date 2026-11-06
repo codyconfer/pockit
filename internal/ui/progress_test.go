@@ -44,9 +44,9 @@ func TestProgressWriteError(t *testing.T) {
 
 func TestStyledProgress(t *testing.T) {
 	var out bytes.Buffer
-	p := &Progress{out: &out, title: "sources / fetch", total: 2, done: 1, color: true}
+	p := &Progress{out: &out, title: "sources / fetch", total: 2, done: 1, color: true, panels: true}
 	p.draw(true)
-	if !strings.Contains(out.String(), "POCKIT") || !strings.Contains(out.String(), "50%") || !strings.Contains(out.String(), "━") {
+	if !strings.Contains(out.String(), "POCKIT") || !strings.Contains(out.String(), "50%") || !strings.Contains(out.String(), "█") {
 		t.Fatalf("missing style: %q", out.String())
 	}
 }

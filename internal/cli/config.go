@@ -35,15 +35,15 @@ func runConfig(args []string, out, errOut io.Writer) int {
 			fmt.Fprint(out, help.String())
 			return Success
 		}
-		uiadapter.Warning(errOut, err.Error(), plain)
+		uiadapter.Warning(errOut, err.Error(), plain || machine)
 		return Invalid
 	}
 	if f.NArg() != 0 {
-		uiadapter.Warning(errOut, "unexpected positional arguments", plain)
+		uiadapter.Warning(errOut, "unexpected positional arguments", plain || machine)
 		return Invalid
 	}
 	fail := func(err error) int {
-		uiadapter.Warning(errOut, err.Error(), plain)
+		uiadapter.Warning(errOut, err.Error(), plain || machine)
 		if errors.Is(err, config.ErrRefused) {
 			return Refused
 		}
@@ -72,12 +72,8 @@ func runConfig(args []string, out, errOut io.Writer) int {
 		if err := json.NewEncoder(out).Encode(map[string]any{"version": 1, "ok": true, "paths": paths}); err != nil {
 			return fail(err)
 		}
-	} else {
-		for _, path := range paths {
-			if _, err := fmt.Fprintln(out, uiadapter.Safe(path)); err != nil {
-				return fail(err)
-			}
-		}
+	} else if err := uiadapter.WritePanel(out, "POCKIT · Configuration", paths, plain); err != nil {
+		return fail(err)
 	}
 	return Success
 }
